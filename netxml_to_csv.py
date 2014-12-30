@@ -5,7 +5,7 @@ import sys
 
 def run():
     print "[*] NETXML to CSV Converter by Meatballs"
-    
+
     if len(sys.argv) != 3:
         print "[*] Usage: %s input output" % sys.argv[0]
     else:
@@ -18,7 +18,7 @@ def run():
                 print "[-] Unable to create output file '%s' for writing." % output_file_name
                 exit()
 
-            try:    
+            try:
                 doc = etree.parse(input_file_name)
             except:
                 print "[-] Unable to open input file: '%s'." % input_file_name
@@ -35,7 +35,7 @@ def run():
                 for client in client_list:
                     output.write("%s,%s,%s,%s\n" % (client[0], client[1], client[2], client[3]))
             sys.stdout.write(" Complete.\r\n")
-            
+
 def parse_net_xml(doc):
     result = ""
 
@@ -43,7 +43,7 @@ def parse_net_xml(doc):
     tenth = total/10
     count = 0
     clients = list()
-    
+
     for network in doc.getiterator("wireless-network"):
         count += 1
         if (count % tenth) == 0:
@@ -51,10 +51,10 @@ def parse_net_xml(doc):
         type = network.attrib["type"]
         channel = network.find('channel').text
         bssid = network.find('BSSID').text
-        
+
         if type == "probe" or channel == "0":
-            continue 
-        
+            continue
+
         encryption = network.getiterator('encryption')
         privacy = ""
         cipher = ""
@@ -77,14 +77,14 @@ def parse_net_xml(doc):
                     privacy = "OPN"
 
         cipher = cipher.strip()
-        
+
         if cipher.find("CCMP") > -1:
             privacy = "WPA2"
 
         if cipher.find("TKIP") > -1:
             privacy += "WPA"
-        
-                
+
+
         power = network.find('snr-info')
         dbm = ""
         if power is not None:
@@ -104,34 +104,36 @@ def parse_net_xml(doc):
         gps = network.find('gps-info')
         lat, lon = '', ''
         if gps is not None:
-            lat = network.find('gps-info').find('avg-lat').text            
-            lon = network.find('gps-info').find('avg-lon').text            
-            
+            lat = network.find('gps-info').find('avg-lat').text
+            lon = network.find('gps-info').find('avg-lon').text
+
         # print "%s,%s,%s,%s,%s,%s,%s\n" % (bssid, channel, privacy, cipher, auth, dbm, essid_text)
         result += "%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (bssid, channel, privacy, cipher, auth, dbm, essid_text, lat, lon)
 
         c_list = associatedClients(network, bssid, essid_text)
         if c_list is not None:
             clients.append(c_list)
-        
+
     return result, clients
 
 def associatedClients(network, bssid, essid_text):
     clients = network.getiterator('wireless-client')
-    
+
     if clients is not None:
         client_info = list()
         for client in clients:
             mac = client.find('client-mac')
             if mac is not None:
                 client_mac = mac.text
-                power = client.find('snr-info').find('max_signal_dbm')
-                if power is not None:
-                    client_power = power.text
-                    c = client_mac, client_power, bssid, essid_text
-                    client_info.append(c)
+                snr = client.find('snr-info')
+                if snr is not None:
+                    power = client.find('snr-info').find('max_signal_dbm')
+                    if power is not None:
+                        client_power = power.text
+                        c = client_mac, client_power, bssid, essid_text
+                        client_info.append(c)
 
         return client_info
 
 if __name__ == "__main__":
-      run()          
+      run()
